@@ -1,14 +1,20 @@
 import React, { useState, useRef } from "react";
 import mammoth from "mammoth";
+import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
+import { getDocument } from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
+import ExcelJS from "exceljs";
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 const FileUploader = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [fileType, setFileType] = useState("");
   const [docContent, setDocContent] = useState("");
   const [xlsContent, setXlsContent] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [drawType, setDrawType] = useState(null); // 'line', 'circle', 'square', 'text', 'highlight', 'opaqueHighlight'
+  const [drawType, setDrawType] = useState(null);
   const [text, setText] = useState("");
   const [shapes, setShapes] = useState([]);
 
@@ -32,53 +38,6 @@ const FileUploader = () => {
 
     // Disable text selection when drawing
     document.body.style.userSelect = "none";
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-
-    if (file) {
-      const fileExtension = file.name.split(".").pop().toLowerCase();
-      const allowedExtensions = [
-        "pdf",
-        "doc",
-        "docx",
-        "xls",
-        "xlsx",
-        "jpg",
-        "png",
-        "msg",
-      ];
-
-      if (allowedExtensions.includes(fileExtension)) {
-        setFileType(fileExtension);
-
-        if (fileExtension === "docx") {
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            const arrayBuffer = event.target.result;
-            const result = await mammoth.extractRawText({ arrayBuffer });
-            setDocContent(result.value);
-          };
-          reader.readAsArrayBuffer(file);
-        } else if (fileExtension === "xls" || fileExtension === "xlsx") {
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            const arrayBuffer = event.target.result;
-            const workbook = XLSX.read(arrayBuffer, { type: "array" });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(sheet);
-            setXlsContent(json);
-          };
-          reader.readAsArrayBuffer(file);
-        } else {
-          setUploadedFile(URL.createObjectURL(file));
-        }
-      } else {
-        alert("Unsupported file format. Please upload a valid file.");
-      }
-    }
   };
 
   const startDrawing = (e) => {
@@ -263,7 +222,54 @@ const FileUploader = () => {
     canvas.addEventListener("mouseup", stopDrawing);
   };
 
-  const saveFile = () => {
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+
+    if (file) {
+      const fileExtension = file.name.split(".").pop().toLowerCase();
+      const allowedExtensions = [
+        "pdf",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "jpg",
+        "png",
+        "msg",
+      ];
+
+      if (allowedExtensions.includes(fileExtension)) {
+        setFileType(fileExtension);
+
+        if (fileExtension === "docx") {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const arrayBuffer = event.target.result;
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            setDocContent(result.value);
+          };
+          reader.readAsArrayBuffer(file);
+        } else if (fileExtension === "xls" || fileExtension === "xlsx") {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const arrayBuffer = event.target.result;
+            const workbook = XLSX.read(arrayBuffer, { type: "array" });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            setXlsContent(json);
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          setUploadedFile(URL.createObjectURL(file));
+        }
+      } else {
+        alert("Unsupported file format. Please upload a valid file.");
+      }
+    }
+  };
+
+  const saveFile = async () => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
@@ -346,6 +352,137 @@ const FileUploader = () => {
         link.download = "modified.png";
         link.click();
       };
+    } else if (fileType === "xls" || fileType === "xlsx") {
+      const workbook = new ExcelJS.Workbook();
+
+      // Create a worksheet and populate it with `xlsContent`
+      const worksheet = workbook.addWorksheet("Canvas Drawing");
+
+      // Add the headers
+      const headers = Object.keys(xlsContent[0]);
+      worksheet.addRow(headers);
+
+      // Add the rows
+      xlsContent.forEach((row) => {
+        worksheet.addRow(Object.values(row));
+      });
+
+      // Convert canvas to base64 image
+      const imgData = canvas.toDataURL("image/png");
+
+      // Add the image to the workbook
+      const imageId = workbook.addImage({
+        base64: imgData,
+        extension: "png",
+      });
+
+      // Position the image in the worksheet
+      worksheet.addImage(imageId, {
+        tl: { col: 0, row: 0 }, // Top-left corner (column 1, row 1)
+        ext: { width: canvas.width, height: canvas.height }, // Set the image dimensions
+      });
+
+      // Save the modified workbook
+      workbook.xlsx
+        .writeBuffer()
+        .then((buffer) => {
+          const blob = new Blob([buffer], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "modified.xlsx";
+          link.click();
+        })
+        .catch((error) => {
+          console.error("Error saving Excel file:", error);
+        });
+    } else if (fileType === "pdf") {
+      const pdf = new jsPDF("landscape");
+      const pdfDoc = await getDocument(uploadedFile).promise;
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      // Iterate through each page of the PDF
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2 }); // Adjust scale as needed
+
+        // Set canvas dimensions to match the PDF page
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // Render the PDF page onto the canvas
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        // Draw annotations on top of the rendered PDF page
+        shapes.forEach((shape) => {
+          context.beginPath();
+          switch (shape.type) {
+            case "line":
+              context.moveTo(shape.startX, shape.startY);
+              context.lineTo(shape.endX, shape.endY);
+              context.strokeStyle = shape.color || "black";
+              context.lineWidth = shape.lineWidth || 2;
+              context.stroke();
+              break;
+            case "circle":
+              context.arc(
+                shape.startX,
+                shape.startY,
+                shape.radius,
+                0,
+                2 * Math.PI
+              );
+              context.strokeStyle = shape.color || "black";
+              context.lineWidth = shape.lineWidth || 2;
+              context.stroke();
+              break;
+            case "square":
+              context.rect(shape.startX, shape.startY, shape.size, shape.size);
+              context.strokeStyle = shape.color || "black";
+              context.lineWidth = shape.lineWidth || 2;
+              context.stroke();
+              break;
+            case "highlight":
+              context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+              context.fillRect(
+                shape.startX,
+                shape.startY,
+                shape.width,
+                shape.height
+              );
+              break;
+            case "text":
+              context.fillStyle = shape.color || "black";
+              context.font = `${shape.fontSize || 16}px Arial`;
+              context.fillText(shape.text, shape.startX, shape.startY);
+              break;
+            default:
+              break;
+          }
+          context.closePath();
+        });
+
+        // Add the canvas as an image to the PDF
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(
+          imgData,
+          "PNG",
+          0,
+          0,
+          pdf.internal.pageSize.getWidth(),
+          pdf.internal.pageSize.getHeight()
+        );
+
+        // Add a new page if not the last
+        if (pageNum < pdfDoc.numPages) {
+          pdf.addPage();
+        }
+      }
+
+      // Save the modified PDF
+      pdf.save("modified.pdf");
     }
   };
 
