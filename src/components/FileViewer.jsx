@@ -10,8 +10,8 @@ const FileUploader = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawType, setDrawType] = useState(null); // 'line', 'circle', 'square', 'text', 'highlight', 'opaqueHighlight'
   const [text, setText] = useState("");
-  const [highlights, setHighlights] = useState([]); // Array to store highlights
-  const [opaqueHighlights, setOpaqueHighlights] = useState([]); // Array for opaque highlights
+  const [shapes, setShapes] = useState([]);
+
   const canvasRef = useRef(null);
 
   // Change cursor styles
@@ -98,27 +98,67 @@ const FileUploader = () => {
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
 
-      // Redraw all highlights and opaque highlights before drawing new shapes
+      // Redraw all previously saved shapes
       context.clearRect(0, 0, canvas.width, canvas.height);
-      highlights.forEach((highlight) => {
-        context.fillStyle = `rgba(${highlight.color.r}, ${highlight.color.g}, ${highlight.color.b}, ${highlight.color.a})`;
-        context.fillRect(
-          highlight.startX * scaleX,
-          highlight.startY * scaleY,
-          highlight.width * scaleX,
-          highlight.height * scaleY
-        );
-      });
-      opaqueHighlights.forEach((highlight) => {
-        context.fillStyle = `rgba(${highlight.color.r}, ${highlight.color.g}, ${highlight.color.b}, ${highlight.color.a})`;
-        context.fillRect(
-          highlight.startX * scaleX,
-          highlight.startY * scaleY,
-          highlight.width * scaleX,
-          highlight.height * scaleY
-        );
+      shapes.forEach((shape) => {
+        context.beginPath();
+        switch (shape.type) {
+          case "line":
+            context.moveTo(shape.startX * scaleX, shape.startY * scaleY);
+            context.lineTo(shape.endX * scaleX, shape.endY * scaleY);
+            context.stroke();
+            break;
+          case "circle":
+            context.arc(
+              shape.startX * scaleX,
+              shape.startY * scaleY,
+              shape.radius * scaleX,
+              0,
+              2 * Math.PI
+            );
+            context.stroke();
+            break;
+          case "square":
+            context.rect(
+              shape.startX * scaleX,
+              shape.startY * scaleY,
+              shape.size * scaleX,
+              shape.size * scaleY
+            );
+            context.stroke();
+            break;
+          case "highlight":
+            context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+            context.fillRect(
+              shape.startX * scaleX,
+              shape.startY * scaleY,
+              shape.width * scaleX,
+              shape.height * scaleY
+            );
+            break;
+          case "opaqueHighlight":
+            context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+            context.fillRect(
+              shape.startX * scaleX,
+              shape.startY * scaleY,
+              shape.width * scaleX,
+              shape.height * scaleY
+            );
+            break;
+          case "text":
+            context.fillText(
+              shape.text,
+              shape.startX * scaleX,
+              shape.startY * scaleY
+            );
+            break;
+          default:
+            break;
+        }
+        context.closePath();
       });
 
+      // Draw the current shape
       switch (drawType) {
         case "line":
           context.beginPath();
@@ -155,50 +195,22 @@ const FileUploader = () => {
           context.stroke();
           break;
         case "highlight":
-          const highlightWidth = currentX - startX;
-          const highlightHeight = currentY - startY;
-          context.fillStyle = "rgba(255, 255, 0, 0.3)"; // Semi-transparent yellow highlight
+          context.fillStyle = "rgba(255, 255, 0, 0.3)";
           context.fillRect(
             startX * scaleX,
             startY * scaleY,
-            highlightWidth * scaleX,
-            highlightHeight * scaleY
+            (currentX - startX) * scaleX,
+            (currentY - startY) * scaleY
           );
-
-          // Save the highlight position for future redraws
-          setHighlights((prevHighlights) => [
-            ...prevHighlights,
-            {
-              startX,
-              startY,
-              width: highlightWidth,
-              height: highlightHeight,
-              color: { r: 255, g: 255, b: 0, a: 0.3 }, // RGBA for transparent yellow
-            },
-          ]);
           break;
         case "opaqueHighlight":
-          const opaqueWidth = currentX - startX;
-          const opaqueHeight = currentY - startY;
-          context.fillStyle = "rgba(0, 0, 0, 1)"; // Solid black opaque highlight
+          context.fillStyle = "rgba(0, 0, 0, 1)";
           context.fillRect(
             startX * scaleX,
             startY * scaleY,
-            opaqueWidth * scaleX,
-            opaqueHeight * scaleY
+            (currentX - startX) * scaleX,
+            (currentY - startY) * scaleY
           );
-
-          // Save the opaque highlight position for future redraws
-          setOpaqueHighlights((prevHighlights) => [
-            ...prevHighlights,
-            {
-              startX,
-              startY,
-              width: opaqueWidth,
-              height: opaqueHeight,
-              color: { r: 0, g: 0, b: 0, a: 1 }, // Opaque black
-            },
-          ]);
           break;
         case "text":
           context.fillText(text, startX * scaleX, startY * scaleY);
@@ -208,13 +220,133 @@ const FileUploader = () => {
       }
     };
 
-    const stopDrawing = () => {
+    const stopDrawing = (e) => {
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+
+      // Save the completed shape
+      setShapes((prevShapes) => [
+        ...prevShapes,
+        {
+          type: drawType,
+          startX,
+          startY,
+          endX,
+          endY,
+          radius:
+            drawType === "circle"
+              ? Math.sqrt(
+                  Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2)
+                )
+              : undefined,
+          size:
+            drawType === "square"
+              ? Math.max(Math.abs(endX - startX), Math.abs(endY - startY))
+              : undefined,
+          width: endX - startX,
+          height: endY - startY,
+          color:
+            drawType === "highlight"
+              ? { r: 255, g: 255, b: 0, a: 0.3 }
+              : drawType === "opaqueHighlight"
+              ? { r: 0, g: 0, b: 0, a: 1 }
+              : undefined,
+          text: drawType === "text" ? text : undefined,
+        },
+      ]);
+
       canvas.removeEventListener("mousemove", drawShape);
       canvas.removeEventListener("mouseup", stopDrawing);
     };
 
     canvas.addEventListener("mousemove", drawShape);
     canvas.addEventListener("mouseup", stopDrawing);
+  };
+
+  const saveFile = () => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    if (fileType === "jpg" || fileType === "png") {
+      const img = new Image();
+      img.src = uploadedFile; // Use the uploaded image's URL
+      img.onload = () => {
+        // Set canvas size to match the image
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw the base image onto the canvas
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Redraw all saved shapes
+        const scaleX = canvas.width / canvas.offsetWidth;
+        const scaleY = canvas.height / canvas.offsetHeight;
+
+        shapes.forEach((shape) => {
+          context.beginPath();
+          switch (shape.type) {
+            case "line":
+              context.moveTo(shape.startX * scaleX, shape.startY * scaleY);
+              context.lineTo(shape.endX * scaleX, shape.endY * scaleY);
+              context.stroke();
+              break;
+            case "circle":
+              context.arc(
+                shape.startX * scaleX,
+                shape.startY * scaleY,
+                shape.radius * scaleX,
+                0,
+                2 * Math.PI
+              );
+              context.stroke();
+              break;
+            case "square":
+              context.rect(
+                shape.startX * scaleX,
+                shape.startY * scaleY,
+                shape.size * scaleX,
+                shape.size * scaleY
+              );
+              context.stroke();
+              break;
+            case "highlight":
+              context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+              context.fillRect(
+                shape.startX * scaleX,
+                shape.startY * scaleY,
+                shape.width * scaleX,
+                shape.height * scaleY
+              );
+              break;
+            case "opaqueHighlight":
+              context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+              context.fillRect(
+                shape.startX * scaleX,
+                shape.startY * scaleY,
+                shape.width * scaleX,
+                shape.height * scaleY
+              );
+              break;
+            case "text":
+              context.fillText(
+                shape.text,
+                shape.startX * scaleX,
+                shape.startY * scaleY
+              );
+              break;
+            default:
+              break;
+          }
+          context.closePath();
+        });
+
+        // Save the canvas as an image
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = "modified.png";
+        link.click();
+      };
+    }
   };
 
   const renderFilePreview = () => {
@@ -329,6 +461,17 @@ const FileUploader = () => {
                   hover:file:bg-blue-100"
       />
       <div className="mt-6">{renderFilePreview()}</div>
+
+      <div className="mt-4">
+        {fileType && (
+          <button
+            onClick={saveFile}
+            className="p-2 bg-green-500 text-white rounded"
+          >
+            Save File
+          </button>
+        )}
+      </div>
 
       {/* Drawing Tools */}
       <div className="mt-4">
