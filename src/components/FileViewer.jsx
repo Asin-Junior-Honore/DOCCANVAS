@@ -6,6 +6,9 @@ import { getDocument } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
 import ExcelJS from "exceljs";
+import { Document, Packer, Paragraph, TextRun, ImageRun } from "docx";
+import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 const FileUploader = () => {
@@ -247,6 +250,7 @@ const FileUploader = () => {
             const arrayBuffer = event.target.result;
             const result = await mammoth.extractRawText({ arrayBuffer });
             setDocContent(result.value);
+            setUploadedFile(file);
           };
           reader.readAsArrayBuffer(file);
         } else if (fileExtension === "xls" || fileExtension === "xlsx") {
@@ -483,6 +487,126 @@ const FileUploader = () => {
 
       // Save the modified PDF
       pdf.save("modified.pdf");
+    } else if (fileType === "docx") {
+      // Load the original DOCX file
+      const arrayBuffer = await uploadedFile.arrayBuffer();
+      const zip = new PizZip(arrayBuffer);
+      const doc = new Docxtemplater().loadZip(zip);
+
+      // Extract the full content (paragraphs) of the DOCX file using PizZip
+      const docxXml = zip.file("word/document.xml").asText();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(docxXml, "application/xml");
+
+      // Extract paragraphs and their runs (text with formatting)
+      const paragraphs = Array.from(xmlDoc.getElementsByTagName("w:p"));
+
+      // Convert the paragraphs into a format that Docx will understand
+      const docParagraphs = paragraphs.map((p) => {
+        const runs = Array.from(p.getElementsByTagName("w:r"));
+        return new Paragraph({
+          children: runs.map((r) => {
+            const textNode = r.getElementsByTagName("w:t")[0];
+            const text = textNode ? textNode.textContent : "";
+
+            // Extract formatting (e.g., bold, italic, etc.)
+            const bold = r.getElementsByTagName("w:b").length > 0;
+            const italic = r.getElementsByTagName("w:i").length > 0;
+            const underline = r.getElementsByTagName("w:u").length > 0;
+            const color = r.getElementsByTagName("w:color")[0]
+              ? r.getElementsByTagName("w:color")[0].getAttribute("w:val")
+              : undefined;
+            const highlight = r.getElementsByTagName("w:highlight")[0]
+              ? r.getElementsByTagName("w:highlight")[0].getAttribute("w:val")
+              : undefined;
+
+            return new TextRun({
+              text: text,
+              bold: bold,
+              italic: italic,
+              underline: underline,
+              color: color,
+              highlight: highlight,
+            });
+          }),
+        });
+      });
+
+      // Convert canvas to an image (this includes drawings and highlights)
+      const imgData = canvas.toDataURL("image/png");
+      const imageBuffer = Uint8Array.from(atob(imgData.split(",")[1]), (c) =>
+        c.charCodeAt(0)
+      );
+
+      // Create the DOCX document with the original content, canvas image, and annotations
+      const newDoc = new Document({
+        sections: [
+          {
+            properties: {}, // Document properties
+            children: [
+              // Add the original content (with formatting)
+              ...docParagraphs,
+
+              // Add the canvas image (drawing/highlight)
+              new Paragraph({
+                children: [
+                  new ImageRun({
+                    data: imageBuffer,
+                    transformation: {
+                      width: 600, // Adjust the width of the image
+                      height: 400, // Adjust the height of the image
+                    },
+                  }),
+                ],
+              }),
+
+              // Add annotations (e.g., text, highlights, etc.)
+              ...shapes.map((shape) => {
+                switch (shape.type) {
+                  case "text":
+                    return new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: shape.text,
+                          color: shape.color || "black",
+                        }),
+                      ],
+                    });
+                  case "highlight":
+                    return new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: shape.text || "Highlighted Text",
+                          highlight: shape.color || "yellow",
+                        }),
+                      ],
+                    });
+                  case "line":
+                  case "circle":
+                  case "square":
+                    // For drawings, add a placeholder or description
+                    return new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: `[Drawing: ${shape.type}]`,
+                        }),
+                      ],
+                    });
+                  default:
+                    return new Paragraph({});
+                }
+              }),
+            ],
+          },
+        ],
+      });
+
+      // Save the modified DOCX file
+      const blob = await Packer.toBlob(newDoc);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "modified.docx";
+      link.click();
     }
   };
 

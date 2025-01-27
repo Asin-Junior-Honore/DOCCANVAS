@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "docx": "^9.1.1",
+    "docxtemplater": "^3.58.3",
     "exceljs": "^4.4.0",
     "jspdf": "^2.5.2",
     "mammoth": "^1.9.0",
     "pdfjs-dist": "^4.10.38",
+    "pizzip": "^3.1.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5"
