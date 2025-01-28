@@ -1,4 +1,3 @@
-// fileSaveUtils.js
 import ExcelJS from "exceljs";
 import { jsPDF } from "jspdf";
 import { getDocument } from "pdfjs-dist";
@@ -270,12 +269,10 @@ export const saveFile = async ({
     const newDoc = new Document({
       sections: [
         {
-          properties: {}, // Document properties
+          properties: {},
           children: [
-            // Add the original content (with formatting)
             ...docParagraphs,
 
-            // Add the canvas image (drawing/highlight)
             new Paragraph({
               children: [
                 new ImageRun({
@@ -288,7 +285,6 @@ export const saveFile = async ({
               ],
             }),
 
-            // Add annotations (e.g., text, highlights, etc.)
             ...shapes.map((shape) => {
               switch (shape.type) {
                 case "text":
@@ -296,7 +292,7 @@ export const saveFile = async ({
                     children: [
                       new TextRun({
                         text: shape.text,
-                        color: shape.color || "black",
+                        color: shape.color || "",
                       }),
                     ],
                   });

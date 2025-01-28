@@ -2,7 +2,7 @@ import FileUploader from "./components/FileUploader";
 function App() {
   return (
     <section>
-      <div>
+      <div className="hero-intro">
         <h2 className="text-4xl font-semibold text-center mb-4">
           Welcome to <span className="text-blue-600">DocCanvas</span>
         </h2>
