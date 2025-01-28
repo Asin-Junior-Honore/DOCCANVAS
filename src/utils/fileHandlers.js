@@ -20,7 +20,7 @@ export const handleFileChange = async (
       "xlsx",
       "jpg",
       "png",
-      "msg",
+      // "msg",
     ];
 
     if (allowedExtensions.includes(fileExtension)) {

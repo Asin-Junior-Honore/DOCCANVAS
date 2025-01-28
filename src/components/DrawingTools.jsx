@@ -11,7 +11,7 @@ const DrawingTools = ({
     <div className="mt-4">
       {fileType && (
         <>
-          <div className="flex flex-wrap gap-3 btns-to-draw">
+          <div className="flex justify-center flex-wrap gap-3 btns-to-draw">
             <button
               onClick={() => handleToolClick("line")}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"

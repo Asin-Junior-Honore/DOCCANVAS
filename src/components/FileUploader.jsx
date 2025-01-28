@@ -96,7 +96,7 @@ const FileUploader = () => {
             {fileType && (
                 <button
                     onClick={handleSave}
-                    className="px-6 py-2 mt-4 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
+                    className="px-6 py-2 mt-4 bg-purple-600 text-white rounded-lg  hover:bg-purple-700 transition"
                 >
                     Save File
                 </button>
