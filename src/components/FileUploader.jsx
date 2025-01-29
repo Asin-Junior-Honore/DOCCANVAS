@@ -49,7 +49,7 @@ const FileUploader = () => {
                 />
                 <div className="flex flex-col items-center justify-center text-center p-4">
                     <img
-                        src="/src/assets/uploadfile.png"
+                        src="/uploadfile.png"
                         alt="Upload"
                         className="size-12 mb-2 transform transition-transform duration-300 group-hover:scale-110 rounded"
                     />
