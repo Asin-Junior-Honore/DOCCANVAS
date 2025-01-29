@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 const FilePreview = ({
     uploadedFile,
@@ -12,6 +12,28 @@ const FilePreview = ({
     setShapes,
     text,
 }) => {
+    const [isDragging, setIsDragging] = useState(false);
+    const [position, setPosition] = useState({ x: 150, y: 150 });
+    const textRef = useRef(null);
+
+    const handleMouseDown = (e) => {
+        setIsDragging(true);
+    };
+
+    const handleMouseMove = (e) => {
+        if (isDragging) {
+            const canvasRect = textRef.current.parentElement.getBoundingClientRect();
+            const newX = e.clientX - canvasRect.left;
+            const newY = e.clientY - canvasRect.top;
+
+            setPosition({ x: newX, y: newY });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
     const startDrawing = (e) => {
         if (!isDrawing || !canvasRef.current) return;
 
@@ -76,13 +98,7 @@ const FilePreview = ({
                             shape.height * scaleY
                         );
                         break;
-                    case "text":
-                        context.fillText(
-                            shape.text,
-                            shape.startX * scaleX,
-                            shape.startY * scaleY
-                        );
-                        break;
+
                     default:
                         break;
                 }
@@ -141,9 +157,7 @@ const FilePreview = ({
                         (currentY - startY) * scaleY
                     );
                     break;
-                case "text":
-                    context.fillText(text, startX * scaleX, startY * scaleY);
-                    break;
+
                 default:
                     break;
             }
@@ -181,7 +195,6 @@ const FilePreview = ({
                             : drawType === "opaqueHighlight"
                                 ? { r: 0, g: 0, b: 0, a: 1 }
                                 : undefined,
-                    text: drawType === "text" ? text : undefined,
                 },
             ]);
 
@@ -204,7 +217,7 @@ const FilePreview = ({
     return (
         <div className="relative h-full">
             <main
-                className={`overflow-y-scroll relative z-0 transition-opacity duration-300 ${fileType ? "opacity-100" : "opacity-0 hidden pointer-events-none"
+                className={`overflow-y-scroll  relative z-0 transition-opacity duration-300 ${fileType ? "opacity-100" : "opacity-0 hidden pointer-events-none"
                     }`}
                 style={{ height: "550px" }}
             >
@@ -266,7 +279,27 @@ const FilePreview = ({
                     </div>
                 ) : null}
             </main>
-            <div>{text}</div>
+
+            {/* Draggable Text */}
+            {drawType === "text" && text && (
+                <p
+                    ref={textRef}
+                    className={`absolute cursor-${isDragging ? "grabbing" : "grab"
+                        } text-blue-700 font-semibold`}
+                    style={{
+                        fontSize: "24px",
+                        left: `${position.x}px`,
+                        top: `${position.y}px`,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 20,
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                >
+                    {text}
+                </p>
+            )}
 
             {/* Canvas for drawing */}
             <canvas
