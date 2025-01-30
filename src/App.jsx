@@ -14,7 +14,7 @@ function App() {
         </p>
       </div>
       <FileUploader />
-      <ul class="circles">
+      <ul className="circles">
         <li></li>
         <li></li>
         <li></li>

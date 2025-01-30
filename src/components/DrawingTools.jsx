@@ -65,7 +65,7 @@ const DrawingTools = ({
                 Clear Text Input
               </button>
               <button
-                onClick={() => handleToolClick("")}
+                onClick={() => handleToolClick("normal")}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition"
               >
                 Close Text Input

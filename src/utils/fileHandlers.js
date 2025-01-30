@@ -64,6 +64,8 @@ export const handleToolClick = (type, setDrawType, setIsDrawing) => {
     document.body.style.cursor = "text";
   } else if (type === "highlight" || type === "opaqueHighlight") {
     document.body.style.cursor = "pointer";
+  } else if (type === "normal") {
+    document.body.style.cursor = "default";
   } else if (type) {
     document.body.style.cursor = "crosshair";
   }
