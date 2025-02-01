@@ -22,35 +22,44 @@ export const saveFile = async ({
     const img = new Image();
     img.src = uploadedFile;
     img.onload = () => {
-      // Set canvas size to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      // Match canvas size to the actual image size
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
 
       // Draw the base image onto the canvas
       context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Redraw all saved shapes
-      const scaleX = canvas.width / canvas.offsetWidth;
-      const scaleY = canvas.height / canvas.offsetHeight;
+      // Scale factors from displayed size to actual image size
+      const scaleX = img.naturalWidth / canvasRef.current.width;
+      const scaleY = img.naturalHeight / canvasRef.current.height;
 
+      // Redraw all saved shapes
       shapes.forEach((shape) => {
         context.beginPath();
+        context.lineWidth = 2;
+        context.strokeStyle = "black";
+
         switch (shape.type) {
           case "line":
             context.moveTo(shape.startX * scaleX, shape.startY * scaleY);
             context.lineTo(shape.endX * scaleX, shape.endY * scaleY);
             context.stroke();
             break;
+
           case "circle":
             context.arc(
               shape.startX * scaleX,
               shape.startY * scaleY,
-              shape.radius * scaleX,
+              shape.radius * scaleX, // Apply scale
               0,
               2 * Math.PI
             );
             context.stroke();
             break;
+
           case "square":
             context.rect(
               shape.startX * scaleX,
@@ -60,17 +69,14 @@ export const saveFile = async ({
             );
             context.stroke();
             break;
+
           case "highlight":
-            context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
-            context.fillRect(
-              shape.startX * scaleX,
-              shape.startY * scaleY,
-              shape.width * scaleX,
-              shape.height * scaleY
-            );
-            break;
           case "opaqueHighlight":
-            context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+            if (shape.color && shape.color.r !== undefined) {
+              context.fillStyle = `rgba(${shape.color.r}, ${shape.color.g}, ${shape.color.b}, ${shape.color.a})`;
+            } else {
+              context.fillStyle = "rgba(255, 255, 0, 0.3)"; // Default transparent highlight
+            }
             context.fillRect(
               shape.startX * scaleX,
               shape.startY * scaleY,
@@ -78,13 +84,17 @@ export const saveFile = async ({
               shape.height * scaleY
             );
             break;
+
           case "text":
+            context.font = "20px Arial"; // Adjust text properties as needed
+            context.fillStyle = "black";
             context.fillText(
               shape.text,
               shape.startX * scaleX,
               shape.startY * scaleY
             );
             break;
+
           default:
             break;
         }
@@ -94,10 +104,11 @@ export const saveFile = async ({
       // Save the canvas as an image
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
-      link.download = "modified.png";
+      link.download = "modified_image.png";
       link.click();
     };
-  } else if (fileType === "xls" || fileType === "xlsx") {
+  }
+  else if (fileType === "xls" || fileType === "xlsx") {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Canvas Drawing");
 
@@ -128,7 +139,8 @@ export const saveFile = async ({
       link.download = "modified.xlsx";
       link.click();
     });
-  } else if (fileType === "pdf") {
+  }
+  else if (fileType === "pdf") {
     const pdf = new jsPDF("landscape");
     const pdfDoc = await getDocument(uploadedFile).promise;
     const canvas = document.createElement("canvas");
@@ -214,7 +226,8 @@ export const saveFile = async ({
 
     // Save the modified PDF
     pdf.save("modified.pdf");
-  } else if (fileType === "docx") {
+  }
+  else if (fileType === "docx") {
     // Load the original DOCX file
     const arrayBuffer = await uploadedFile.arrayBuffer();
     const zip = new PizZip(arrayBuffer);
