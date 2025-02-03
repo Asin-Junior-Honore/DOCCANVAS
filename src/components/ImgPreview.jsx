@@ -196,11 +196,7 @@ const ImgPreview = ({
       <canvas
         ref={canvasRef}
         onMouseDown={startDrawing}
-        className="absolute top-0 left-0 pointer-events-auto"
-        style={{
-          width: "100%",
-          height: "auto",
-        }}
+        className="absolute top-0 left-0 pointer-events-auto max-w-full h-[-webkit-fill-available]"
       />
     </div>
   );
