@@ -107,8 +107,7 @@ export const saveFile = async ({
       link.download = "modified_image.png";
       link.click();
     };
-  }
-  else if (fileType === "xls" || fileType === "xlsx") {
+  } else if (fileType === "xls" || fileType === "xlsx") {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Canvas Drawing");
 
@@ -139,26 +138,35 @@ export const saveFile = async ({
       link.download = "modified.xlsx";
       link.click();
     });
-  }
-  else if (fileType === "pdf") {
-    const pdf = new jsPDF("landscape");
+  } else if (fileType === "pdf") {
     const pdfDoc = await getDocument(uploadedFile).promise;
+    const firstPage = await pdfDoc.getPage(1); 
+    const viewport = firstPage.getViewport({ scale: 2 });
+
+    const originalWidth = viewport.width;
+    const originalHeight = viewport.height;
+
+    // Create a new PDF with the correct orientation and size
+    const pdf = new jsPDF({
+      orientation: originalWidth > originalHeight ? "landscape" : "portrait",
+      unit: "px",
+      format: [originalWidth, originalHeight],
+    });
+
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
-    // Iterate through each page of the PDF
+    // Iterate through each page
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
       const page = await pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2 }); // Adjust scale as needed
+      const viewport = page.getViewport({ scale: 2 });
 
-      // Set canvas dimensions to match the PDF page
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      // Render the PDF page onto the canvas
       await page.render({ canvasContext: context, viewport }).promise;
 
-      // Draw annotations on top of the rendered PDF page
+      // Draw annotations
       shapes.forEach((shape) => {
         context.beginPath();
         switch (shape.type) {
@@ -207,27 +215,19 @@ export const saveFile = async ({
         context.closePath();
       });
 
-      // Add the canvas as an image to the PDF
+      // Convert canvas to image
       const imgData = canvas.toDataURL("image/png");
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdf.internal.pageSize.getWidth(),
-        pdf.internal.pageSize.getHeight()
-      );
 
-      // Add a new page if not the last
+      // Maintain original page size
+      pdf.addImage(imgData, "PNG", 0, 0, viewport.width, viewport.height);
+
       if (pageNum < pdfDoc.numPages) {
-        pdf.addPage();
+        pdf.addPage([viewport.width, viewport.height]);
       }
     }
 
-    // Save the modified PDF
     pdf.save("modified.pdf");
-  }
-  else if (fileType === "docx") {
+  } else if (fileType === "docx") {
     // Load the original DOCX file
     const arrayBuffer = await uploadedFile.arrayBuffer();
     const zip = new PizZip(arrayBuffer);
