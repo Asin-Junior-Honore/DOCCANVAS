@@ -32,7 +32,7 @@ const FileUploader = () => {
     <div className="p-4">
       <label
         htmlFor="fileInput"
-        className="flex mx-auto relative items-center justify-center w-48 h-48 cursor-pointer border-2 border-dashed border-blue-600 rounded-lg overflow-hidden hover:border-blue-700 hover:bg-blue-50 transition-all duration-300 group"
+        className="lg:flex md:hidden hidden mx-auto relative items-center justify-center w-48 h-48 cursor-pointer border-2 border-dashed border-blue-600 rounded-lg overflow-hidden hover:border-blue-700 hover:bg-blue-50 transition-all duration-300 group"
       >
         <input
           type="file"
@@ -114,6 +114,10 @@ const FileUploader = () => {
           Save File
         </button>
       )}
+      <p className="lg:hidden flex items-center justify-center text-center bg-red-600 text-white font-semibold px-6 py-4 rounded-md shadow-md animate-pulse">
+        This application is not available on mobile or tablet devices. Please
+        use a desktop 🖥️ for the best experience. Thank you!
+      </p>
     </div>
   );
 };

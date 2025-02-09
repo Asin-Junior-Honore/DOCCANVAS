@@ -15,16 +15,9 @@ function App() {
       </div>
       <FileUploader />
       <ul className="circles">
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
+        {[...Array(10)].map((_, index) => (
+          <li key={index}></li>
+        ))}
       </ul>
     </section>
   );
