@@ -1,4 +1,4 @@
-# DOCCANVAS - Front-End Developer Challenge Submission
+# DOCCANVAS - Front-End Developer Challenge
 
 ## Overview
 
