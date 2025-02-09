@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import DraggableText from "./DraggableText";
 const ImgPreview = ({
   uploadedFile,
   canvasRef,
@@ -80,6 +79,10 @@ const ImgPreview = ({
             currentY - startY
           );
           break;
+        case "text":
+          context.font = "bold 20px Arial";
+          context.fillText(text, startX * scaleX, startY * scaleY);
+          break;
         default:
           break;
       }
@@ -116,6 +119,7 @@ const ImgPreview = ({
               : drawType === "opaqueHighlight"
               ? { r: 0, g: 0, b: 0, a: 1 }
               : undefined,
+          text: drawType === "text" ? text : undefined,
         },
       ]);
 
@@ -169,6 +173,14 @@ const ImgPreview = ({
             shape.height * scaleY
           );
           break;
+        case "text":
+          context.font = "bold 20px Arial";
+          context.fillText(
+            shape.text,
+            shape.startX * scaleX,
+            shape.startY * scaleY
+          );
+          break;
         default:
           break;
       }
@@ -192,7 +204,6 @@ const ImgPreview = ({
           }
         }}
       />
-      <DraggableText text={text} drawType={drawType} />
       <canvas
         ref={canvasRef}
         onMouseDown={startDrawing}

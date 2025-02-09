@@ -86,7 +86,7 @@ export const saveFile = async ({
             break;
 
           case "text":
-            context.font = "20px Arial"; // Adjust text properties as needed
+            context.font = "bold 20px Arial";
             context.fillStyle = "black";
             context.fillText(
               shape.text,
@@ -140,7 +140,7 @@ export const saveFile = async ({
     });
   } else if (fileType === "pdf") {
     const pdfDoc = await getDocument(uploadedFile).promise;
-    const firstPage = await pdfDoc.getPage(1); 
+    const firstPage = await pdfDoc.getPage(1);
     const viewport = firstPage.getViewport({ scale: 2 });
 
     const originalWidth = viewport.width;
@@ -206,7 +206,7 @@ export const saveFile = async ({
             break;
           case "text":
             context.fillStyle = shape.color || "black";
-            context.font = `${shape.fontSize || 16}px Arial`;
+            context.font = `${shape.fontSize || 20}px Arial`;
             context.fillText(shape.text, shape.startX, shape.startY);
             break;
           default:
