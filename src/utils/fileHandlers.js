@@ -50,7 +50,7 @@ export const handleFileChange = async (
         setUploadedFile(URL.createObjectURL(file));
       }
     } else {
-      alert("Unsupported file format. Please upload a valid file.");
+      alert("Unsupported file format. Please upload a valid file. Supported formats are: pdf, doc, docx, xls, xlsx, jpg, png.");
     }
   }
 };
